@@ -137,9 +137,9 @@ def main():
 	parser = argparse.ArgumentParser(description='Mosaic Image Generator v1.0')
 	parser.add_argument('src_dir', type=str, help="directory with a lot of images")
 	parser.add_argument('src_pic', type=str, help="the image that will be recreated with small images")
-	parser.add_argument('-n', '--normal', type=int, default=256, help="size individual images of the mosaic in pixels (default: 256)")
-	parser.add_argument('-w', '--width', type=int, default=32, help="number of images per row of the mosaic (default: 128)")
-	parser.add_argument('-o', '--out_pic', type=str, help="the path of the generated mosaic")
+	parser.add_argument('-n', '--normal', type=int, default=256, help="size of individual images of the mosaic in pixels (default: 256)")
+	parser.add_argument('-w', '--width', type=int, default=32, help="number of images per row of the mosaic (default: 32)")
+	parser.add_argument('-o', '--out_pic', type=str, help="the path of the generated mosaic (default: 'mosaic_{w}x{n}.jpg')")
 	args = parser.parse_args()
 
 	source_path = f'{args.src_dir}_normal_{args.normal}'
