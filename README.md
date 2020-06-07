@@ -39,3 +39,4 @@ Only png and jpg images will be used.
 - store calculated average colors for images
 - make storage of scaled images optional
 - support non-square images (don't crop them)
+- make calculation of average colors async or multithreaded
