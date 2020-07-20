@@ -4,6 +4,7 @@ from PIL import Image
 from random import shuffle
 import numpy as np
 import argparse
+import ast
 
 
 def progress(count, total, status=''):
@@ -91,13 +92,40 @@ def get_concat_y(im1, im2):
 	return dst
 
 
+def save_average_colors(path, colors):
+	file = open(path, 'w')
+	for color in colors:
+		file.write(f'{str(color)}\n')
+
+
+def read_average_colors(path):
+	colors = []
+	for color in open(path):
+		colors.append(ast.literal_eval(color))
+	return colors
+
+
+def file_len(file):
+	with open(file) as f:
+		for i, l in enumerate(f):
+			pass
+	return i + 1
+
+
 def mosaic(original_image_path, stitched_out_path, source_path, images_per_line):
 	piclist = get_imglist(source_path)
-	piccolors = []
-	for x in range(len(piclist)):
-		progress(x+1, len(piclist), 'calc average colors...')
-		piccolors.append(get_image_average(Image.open(piclist[x])))
-	print()
+
+	average_color_f = os.path.join(source_path, 'colors.txt')
+	if os.path.exists(average_color_f) and file_len(average_color_f) == len(piclist):
+		print('reading stored average colors..')
+		piccolors = read_average_colors(average_color_f)
+	else:
+		piccolors = []
+		for x in range(len(piclist)):
+			progress(x+1, len(piclist), 'calc average colors...')
+			piccolors.append(get_image_average(Image.open(piclist[x])))
+		print()
+		save_average_colors(average_color_f, piccolors)
 
 	## strink target image to squared image of size (images_per_line, images_per_line)
 	## then put the colors into a list
@@ -157,7 +185,7 @@ def main():
 		print(f'There are not enough images in {args.src_dir}')
 		print(f'for a {args.width} by {args.width} mosaic.')
 		exit()
-	if not os.path.exists(source_path) or len(get_imglist(args.src_dir)) != len(get_imglist(source_path)):
+	if not os.path.exists(source_path):
 		normalize_images(args.src_dir, source_path, args.normal)
 
 	mosaic(args.src_pic, args.out_pic, source_path, args.width)
