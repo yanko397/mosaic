@@ -34,11 +34,14 @@ def normalize_images(indir, outdir, normal_size, mode='crop'): # TODO mode (crop
 		progress(x, len(piclist), 'copying and resizing images..')
 		outfile = os.path.join(outdir, f'pic{x}.jpg')
 		if not os.path.exists(outfile):
-			img = Image.open(piclist[x])
-			if img.mode != 'RGB':
-				img = img.convert('RGB')
-			img = squarify(img, normal_size)
-			img.save(outfile)
+			try:
+				img = Image.open(piclist[x])
+				if img.mode != 'RGB':
+					img = img.convert('RGB')
+				img = squarify(img, normal_size)
+				img.save(outfile)
+			except OSError:
+				print(f'Skipping broken image: {piclist[x]}...                ')
 	print()
 
 
