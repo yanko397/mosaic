@@ -29,14 +29,16 @@ def squarify(img, size):
 
 def normalize_images(indir, outdir, normal_size, mode='crop'): # TODO mode (crop/fill)
 	piclist = get_imglist(indir)
+	ensure_dir(outdir)
 	for x in range(len(piclist)):
 		progress(x, len(piclist), 'copying and resizing images..')
-		img = Image.open(piclist[x])
-		if img.mode != 'RGB':
-			img = img.convert('RGB')
-		img = squarify(img, normal_size)
-		ensure_dir(outdir)
-		img.save(os.path.join(outdir, f'pic{x}.jpg'))
+		outfile = os.path.join(outdir, f'pic{x}.jpg')
+		if not os.path.exists(outfile):
+			img = Image.open(piclist[x])
+			if img.mode != 'RGB':
+				img = img.convert('RGB')
+			img = squarify(img, normal_size)
+			img.save(outfile)
 	print()
 
 
