@@ -6,6 +6,10 @@ import numpy as np
 import argparse
 import ast
 
+import time
+current_time_milli = lambda: int(round(time.time() * 1000))
+current_time_micro = lambda: int(round(time.time() * 1000000))
+
 
 def progress(count, total, status=''):
 	bar_len = 40
@@ -18,7 +22,7 @@ def progress(count, total, status=''):
 
 def squarify(img, size):
 	if img.size[0] < img.size[1]:
-		img = img.resize((size, int(size*max(img.size)/min(img.size))))
+		img = img.resize((size, int(size*max(img.size)/min(img.size)))) # this takes about 12 times longer than img.crop
 		img = img.crop((0, (max(img.size)-size)/2, size, (max(img.size)-size)/2+size))
 	elif img.size[0] > img.size[1]:
 		img = img.resize((int(size*max(img.size)/min(img.size)), size))
@@ -39,7 +43,7 @@ def normalize_images(indir, outdir, normal_size, mode='crop'): # TODO mode (crop
 				img = Image.open(piclist[x])
 				if img.mode != 'RGB':
 					img = img.convert('RGB')
-				img = squarify(img, normal_size)
+				img = squarify(img, normal_size) # this takes about 10 times longer than img.save
 				img.save(outfile)
 			except OSError:
 				print(f'Skipping broken image: {piclist[x]}...                ')
@@ -170,25 +174,25 @@ def main():
 	parser = argparse.ArgumentParser(description='Mosaic Image Generator v1.0')
 	parser.add_argument('src_dir', type=str, help="directory with a lot of images")
 	parser.add_argument('src_pic', type=str, help="the image that will be recreated with small images")
-	parser.add_argument('-n', '--normal', type=int, default=256, help="size of individual images of the mosaic in pixels (default: 256)")
-	parser.add_argument('-w', '--width', type=int, default=32, help="number of images per row of the mosaic (default: 32)")
-	parser.add_argument('-o', '--out_pic', type=str, help="the path of the generated mosaic (default: 'mosaic_{w}x{n}.jpg')")
+	parser.add_argument('-w', '--width', type=int, default=256, help="the width of individual images of the mosaic in pixels (default: 256)")
+	parser.add_argument('-n', '--number', type=int, default=32, help="number of images per row of the mosaic (default: 32)")
+	parser.add_argument('-o', '--out_pic', type=str, help="the path of the generated mosaic (default: 'mosaic_{n}x{w}.jpg')")
 	args = parser.parse_args()
 
-	source_path = f'{args.src_dir}_normal_{args.normal}'
+	source_path = f'{args.src_dir}_normal_{args.width}'
 	if not args.out_pic:
-		args.out_pic = f'mosaic_{args.width}x{args.normal}.jpg'
+		args.out_pic = f'mosaic_{args.number}x{args.width}.jpg'
 	if os.path.splitext(args.out_pic) not in ['.jpg', '.png']:
 		args.out_pic += '.jpg'
 
-	if len(get_imglist(args.src_dir)) < args.width**2:
+	if len(get_imglist(args.src_dir)) < args.number**2:
 		print(f'There are not enough images in {args.src_dir}')
-		print(f'for a {args.width} by {args.width} mosaic.')
+		print(f'for a {args.number} by {args.number} mosaic.')
 		exit()
 	if not os.path.exists(source_path):
-		normalize_images(args.src_dir, source_path, args.normal)
+		normalize_images(args.src_dir, source_path, args.width)
 
-	mosaic(args.src_pic, args.out_pic, source_path, args.width)
+	mosaic(args.src_pic, args.out_pic, source_path, args.number)
 
 
 if __name__ == '__main__':
