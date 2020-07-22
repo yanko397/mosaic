@@ -37,6 +37,5 @@ Only png and jpg images will be used.
 
 ## TODO ##
 - optimize scaling speed
-- optimize average color calculation speed
 - make storage of scaled images optional
 - support non-square images (don't crop them)
