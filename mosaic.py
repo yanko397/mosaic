@@ -71,15 +71,12 @@ def get_index_closest_color(color, colors):
 	return int(index_of_smallest[0][0])
 
 
-def get_image_average(img, stride=0):
-	if not stride:
-		## this appears to be a relatively good stride
-		stride = int(img.size[0]+(img.size[0]/8))-1
-	csum = (0, 0, 0)
-	for color in list(img.getdata())[::stride]:
-		csum = tuple(np.add(csum, color))
-	average = lambda x : int(csum[x]/(len(list(img.getdata()))/stride))
-	return tuple([average(x) for x in range(len(csum))])
+def get_image_average(img):
+	# stride = int(img.size[0]+(img.size[0]/8))-1
+	points = min(img.size[0]**2, 231)
+	stride = int(img.size[0]**2 / points)
+	average = np.mean(list(img.getdata())[::stride], axis=0)
+	return tuple(np.floor(average).astype('int'))
 
 
 def get_concat_x(im1, im2):
