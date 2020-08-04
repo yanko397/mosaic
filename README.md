@@ -13,9 +13,9 @@ For the default settings 1024 images will be used. So to get any result with def
 ## Usage ##
 Running `python3 mosaic.py --help` will get you the following help text:
 ```
-usage: mosaic.py [-h] [-n NORMAL] [-w WIDTH] [-o OUT_PIC] src_dir src_pic
+usage: mosaic.py [-h] [-w WIDTH] [-n NUMBER] [-o OUT_PIC] src_dir src_pic
 
-Mosaic Image Generator v1.0
+Mosaic Image Generator v1.1
 
 positional arguments:
   src_dir               directory with a lot of images
@@ -23,17 +23,18 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -n NORMAL, --normal NORMAL
-                        size of individual images of the mosaic in pixels
-                        (default: 256)
   -w WIDTH, --width WIDTH
+                        the width of individual images of the mosaic in pixels
+                        (default: 256)
+  -n NUMBER, --number NUMBER
                         number of images per row of the mosaic (default: 32)
   -o OUT_PIC, --out_pic OUT_PIC
                         the path of the generated mosaic (default:
-                        'mosaic_{w}x{n}.jpg')
+                        '[src_pic]_{n}x{w}.jpg')
 ```
 You need at least `width`² images in the `src_dir` directory.
 Only png and jpg images will be used.
 
 ## TODO ##
 - make calculation of average colors async or multithreaded
+- fit subpixels in the small images to subpixels in the target image

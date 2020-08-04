@@ -181,7 +181,7 @@ def mosaic(original_image_path, stitched_out_path, source_path, images_per_line)
 
 
 def main():
-	parser = argparse.ArgumentParser(description='Mosaic Image Generator v1.0')
+	parser = argparse.ArgumentParser(description='Mosaic Image Generator v1.1')
 	parser.add_argument('src_dir', type=str, help="directory with a lot of images")
 	parser.add_argument('src_pic', type=str, help="the image that will be recreated with small images")
 	parser.add_argument('-w', '--width', type=int, default=256, help="the width of individual images of the mosaic in pixels (default: 256)")
