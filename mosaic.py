@@ -1,10 +1,11 @@
 import os
 import sys
-from PIL import Image
-from random import shuffle
-import numpy as np
-import argparse
 import ast
+import random
+import argparse
+
+import numpy as np
+from PIL import Image
 
 import time
 current_time_milli = lambda: int(round(time.time() * 1000))
@@ -130,12 +131,15 @@ def mosaic(original_image_path, stitched_out_path, source_path, images_per_line)
 
 	## strink target image to squared image of size (images_per_line, images_per_line)
 	## then put the colors into a list
-	targetcolors = list(squarify(Image.open(original_image_path), size=images_per_line).getdata())
+	original_image = Image.open(original_image_path)
+	if original_image.mode != 'RGB':
+		original_image = original_image.convert('RGB')
+	targetcolors = list(squarify(original_image, size=images_per_line).getdata())
 
 	randomized_indexes = [x for x in range(len(targetcolors))]
 	## fill result array with stuff so elements can be placed at randomized indexes
 	matches = [x for x in randomized_indexes]
-	shuffle(randomized_indexes)
+	random.shuffle(randomized_indexes)
 	i = 1
 	for x in randomized_indexes:
 		progress(i, len(targetcolors), 'find matching imgs...')
