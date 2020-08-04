@@ -21,15 +21,22 @@ def progress(count, total, status=''):
 	sys.stdout.flush()
 
 
-def squarify(img, size):
-	if img.size[0] < img.size[1]:
-		img = img.resize((size, int(size*max(img.size)/min(img.size)))) # this takes about 12 times longer than img.crop
-		img = img.crop((0, (max(img.size)-size)/2, size, (max(img.size)-size)/2+size))
-	elif img.size[0] > img.size[1]:
-		img = img.resize((int(size*max(img.size)/min(img.size)), size))
-		img = img.crop(((max(img.size)-size)/2, 0, (max(img.size)-size)/2+size, size))
+def squarify(img, size, fill=False, fill_color=(255, 0, 255)):
+	if fill:
+		new_img = Image.new('RGB', (size, size), fill_color)
+		img.thumbnail((size, size))
+		(w, h) = img.size
+		new_img.paste(img, (int((size-w)/2), int((size-h)/2)))
+		img = new_img
 	else:
-		img = img.resize((size, size))
+		if img.size[0] < img.size[1]:
+			img = img.resize((size, int(size*max(img.size)/min(img.size)))) # this takes about 12 times longer than img.crop
+			img = img.crop((0, (max(img.size)-size)/2, size, (max(img.size)-size)/2+size))
+		elif img.size[0] > img.size[1]:
+			img = img.resize((int(size*max(img.size)/min(img.size)), size))
+			img = img.crop(((max(img.size)-size)/2, 0, (max(img.size)-size)/2+size, size))
+		else:
+			img = img.resize((size, size))
 	return img
 
 
@@ -59,7 +66,7 @@ def ensure_dir(path):
 def get_imglist(path):
 	infiles = []
 	for x in os.listdir(path):
-		if os.path.splitext(x)[1] in ['.png','.jpg']:
+		if os.path.splitext(x)[1] in ['.png','.jpg', '.jpeg']:
 			infiles.append(os.path.join(path, x))
 	return infiles
 
@@ -134,7 +141,7 @@ def mosaic(original_image_path, stitched_out_path, source_path, images_per_line)
 	original_image = Image.open(original_image_path)
 	if original_image.mode != 'RGB':
 		original_image = original_image.convert('RGB')
-	targetcolors = list(squarify(original_image, size=images_per_line).getdata())
+	targetcolors = list(squarify(original_image, size=images_per_line, fill=True).getdata())
 
 	randomized_indexes = [x for x in range(len(targetcolors))]
 	## fill result array with stuff so elements can be placed at randomized indexes
@@ -143,10 +150,13 @@ def mosaic(original_image_path, stitched_out_path, source_path, images_per_line)
 	i = 1
 	for x in randomized_indexes:
 		progress(i, len(targetcolors), 'find matching imgs...')
-		good_image_index = get_index_closest_color(targetcolors[x], piccolors)
-		## using pop so images won't appear multiple times
-		matches[x] = piclist.pop(good_image_index)
-		piccolors.pop(good_image_index)
+		if targetcolors[x] != (255, 0, 255):
+			good_image_index = get_index_closest_color(targetcolors[x], piccolors)
+			## using pop so images won't appear multiple times
+			matches[x] = piclist.pop(good_image_index)
+			piccolors.pop(good_image_index)
+		else:
+			matches[x] = None
 		i += 1
 	print()
 
@@ -156,14 +166,13 @@ def mosaic(original_image_path, stitched_out_path, source_path, images_per_line)
 		progress(y+1, images_per_line, 'stitching...')
 		for x in range(images_per_line):
 			firstinrow = y*images_per_line
-			if x == 0:
-				row = Image.open(matches[firstinrow])
-			else:
-				row = get_concat_x(row, Image.open(matches[firstinrow+x]))
-		if y == 0:
-			stitched = row
-		else:
-			stitched = get_concat_y(stitched, row)
+			match = matches[firstinrow+x]
+			if not match:
+				continue
+			mini_img = Image.open(match)
+			row = mini_img if not row else get_concat_x(row, mini_img)
+		if row:
+			stitched = row if not stitched else get_concat_y(stitched, row)
 	print()
 
 	print('saving stitched image...')
@@ -183,7 +192,7 @@ def main():
 	source_path = f'{args.src_dir}_normal_{args.width}'
 	if not args.out_pic:
 		args.out_pic = f'{os.path.splitext(args.src_pic)[0]}_{args.number}x{args.width}.jpg'
-	if os.path.splitext(args.out_pic) not in ['.jpg', '.png']:
+	if os.path.splitext(args.out_pic) not in ['.jpg', '.png', '.jpeg']:
 		args.out_pic += '.jpg'
 
 	if len(get_imglist(args.src_dir)) < args.number**2:

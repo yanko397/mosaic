@@ -34,8 +34,3 @@ optional arguments:
 ```
 You need at least `width`² images in the `src_dir` directory.
 Only png and jpg images will be used.
-
-## TODO ##
-- optimize scaling speed
-- make storage of scaled images optional
-- support non-square images (don't crop them)
