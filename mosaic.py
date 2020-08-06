@@ -192,7 +192,7 @@ def main():
 	source_path = f'{args.src_dir}_normal_{args.width}'
 	if not args.out_pic:
 		args.out_pic = f'{os.path.splitext(args.src_pic)[0]}_{args.number}x{args.width}.jpg'
-	if os.path.splitext(args.out_pic) not in ['.jpg', '.png', '.jpeg']:
+	if os.path.splitext(args.out_pic)[1] not in ['.jpg', '.png', '.jpeg']:
 		args.out_pic += '.jpg'
 
 	if len(get_imglist(args.src_dir)) < args.number**2:
