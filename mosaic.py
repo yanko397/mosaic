@@ -54,7 +54,9 @@ def normalize_images(indir, outdir, normal_size, mode='crop'): # TODO mode (crop
 				img = squarify(img, normal_size) # this takes about 10 times longer than img.save
 				img.save(outfile)
 			except OSError:
-				print(f'Skipping broken image: {piclist[x]}...                ')
+				print(f'Skipping OSError image: {piclist[x]}...                ')
+			except UnboundLocalError:
+				print(f'Skipping UnboundLocalError image: {piclist[x]}...      ')
 	print()
 
 
