@@ -188,14 +188,14 @@ def main():
 	parser.add_argument('src_pic', type=str, help="the image that will be recreated with small images")
 	parser.add_argument('-w', '--width', type=int, default=256, help="the width of individual images of the mosaic in pixels (default: 256)")
 	parser.add_argument('-n', '--number', type=int, default=32, help="number of images per row of the mosaic (default: 32)")
-	parser.add_argument('-o', '--out_pic', type=str, help="the path of the generated mosaic (default: '[src_pic]_{n}x{w}.jpg')")
+	parser.add_argument('-o', '--out_pic', type=str, help="the path of the generated mosaic (default: '[src_pic]_{n}x{w}.png')")
 	args = parser.parse_args()
 
 	source_path = f'{args.src_dir}_normal_{args.width}'
 	if not args.out_pic:
-		args.out_pic = f'{os.path.splitext(args.src_pic)[0]}_{args.number}x{args.width}.jpg'
-	if os.path.splitext(args.out_pic)[1] not in ['.jpg', '.png', '.jpeg']:
-		args.out_pic += '.jpg'
+		args.out_pic = f'{os.path.splitext(args.src_pic)[0]}_{args.number}x{args.width}.png'
+	if os.path.splitext(args.out_pic)[1].lower() not in ['.jpg', '.png', '.jpeg']:
+		args.out_pic += '.png'
 
 	if len(get_imglist(args.src_dir)) < args.number**2:
 		print(f'There are not enough images in {args.src_dir}')
