@@ -123,7 +123,7 @@ def file_len(file):
 	return i + 1
 
 
-def mosaic(original_image_path, source_path, stitched_out_path, images_per_line, images_width):
+def mosaic(source_path, original_image_path, stitched_out_path, images_per_line, images_width):
 	if len(get_imglist(source_path)) < images_per_line**2:
 		print(f'There are not enough images in {source_path}')
 		print(f'for a {images_per_line} by {images_per_line} mosaic.')
@@ -205,7 +205,7 @@ def main():
 	parser.add_argument('-o', '--out_pic', type=str, help="the path of the generated mosaic (default: '[src_pic]_{n}x{w}.png')")
 	args = parser.parse_args()
 
-	mosaic(args.src_pic, args.src_dir, args.out_pic, args.number, args.width)
+	mosaic(args.src_dir, args.src_pic, args.out_pic, args.number, args.width)
 
 
 if __name__ == '__main__':
