@@ -123,10 +123,24 @@ def file_len(file):
 	return i + 1
 
 
-def mosaic(original_image_path, stitched_out_path, source_path, images_per_line):
-	piclist = get_imglist(source_path)
+def mosaic(original_image_path, source_path, stitched_out_path, images_per_line, images_width):
+	if len(get_imglist(source_path)) < images_per_line**2:
+		print(f'There are not enough images in {source_path}')
+		print(f'for a {images_per_line} by {images_per_line} mosaic.')
+		exit()
 
-	average_color_f = os.path.join(source_path, 'colors.txt')
+	if not stitched_out_path:
+		stitched_out_path = f'{os.path.splitext(original_image_path)[0]}_{images_per_line}x{images_width}.png'
+	if os.path.splitext(stitched_out_path)[1].lower() not in ['.jpg', '.png', '.jpeg']:
+		stitched_out_path += '.png'
+
+	normalized_path = f'{source_path}_normal_{images_width}'
+	if not os.path.exists(normalized_path):
+		normalize_images(source_path, normalized_path, images_width)
+
+	piclist = get_imglist(normalized_path)
+
+	average_color_f = os.path.join(normalized_path, 'colors.txt')
 	if os.path.exists(average_color_f) and file_len(average_color_f) == len(piclist):
 		print('reading stored average colors..')
 		piccolors = read_average_colors(average_color_f)
@@ -191,20 +205,7 @@ def main():
 	parser.add_argument('-o', '--out_pic', type=str, help="the path of the generated mosaic (default: '[src_pic]_{n}x{w}.png')")
 	args = parser.parse_args()
 
-	source_path = f'{args.src_dir}_normal_{args.width}'
-	if not args.out_pic:
-		args.out_pic = f'{os.path.splitext(args.src_pic)[0]}_{args.number}x{args.width}.png'
-	if os.path.splitext(args.out_pic)[1].lower() not in ['.jpg', '.png', '.jpeg']:
-		args.out_pic += '.png'
-
-	if len(get_imglist(args.src_dir)) < args.number**2:
-		print(f'There are not enough images in {args.src_dir}')
-		print(f'for a {args.number} by {args.number} mosaic.')
-		exit()
-	if not os.path.exists(source_path):
-		normalize_images(args.src_dir, source_path, args.width)
-
-	mosaic(args.src_pic, args.out_pic, source_path, args.number)
+	mosaic(args.src_pic, args.src_dir, args.out_pic, args.number, args.width)
 
 
 if __name__ == '__main__':
