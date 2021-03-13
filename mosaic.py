@@ -10,6 +10,7 @@ from multiprocessing.pool import ThreadPool
 
 import numpy as np
 from PIL import Image
+from skimage import io
 
 current_time_milli = lambda: int(round(time.time() * 1000))
 current_time_micro = lambda: int(round(time.time() * 1000000))
@@ -99,8 +100,6 @@ def normalize_image(path, counter, max_value, out, normal_size):
 
 
 def calculate_average_colors(piclist, average_color_f):
-    start_time = time.time()
-
     pool = ThreadPool(4)
     counter = Counter(0)
 
@@ -109,17 +108,19 @@ def calculate_average_colors(piclist, average_color_f):
     )
 
     avg_colors = pool.map(calculate_average_color_partial, piclist)
-
+    pool.close()
+    pool.join()
     save_average_colors(average_color_f, avg_colors)
-    print("--- %s seconds ---" % (time.time() - start_time))
 
 
 def calculate_average_color(path, *, counter, max_value):
-    avg_color = get_image_average(Image.open(path))
+    img = io.imread(path)
+    avg_color = tuple(np.rint(img.mean(axis=(0, 1))).astype(int))
+
     counter.increment()
     progress(counter.value(), max_value, 'calc average colors...')
 
-    return avg_color
+    return tuple(avg_color)
 
 
 def ensure_dir(path):
@@ -141,14 +142,6 @@ def get_index_closest_color(color, colors):
     distances = np.sqrt(np.sum((colors - color) ** 2, axis=1))
     index_of_smallest = np.where(distances == np.amin(distances))
     return int(index_of_smallest[0][0])
-
-
-def get_image_average(img):
-    # stride = int(img.size[0]+(img.size[0]/8))-1
-    points = min(img.size[0] ** 2, 231)
-    stride = int(img.size[0] ** 2 / points)
-    average = np.mean(list(img.getdata())[::stride], axis=0)
-    return tuple(np.floor(average).astype('int'))
 
 
 def get_concat_x(im1, im2):
