@@ -1,10 +1,10 @@
 import argparse
 import ast
-import itertools
 import os
 import random
 import sys
 import time
+from functools import partial
 from multiprocessing import Value, Lock
 from multiprocessing.pool import ThreadPool
 
@@ -13,6 +13,20 @@ from PIL import Image
 
 current_time_milli = lambda: int(round(time.time() * 1000))
 current_time_micro = lambda: int(round(time.time() * 1000000))
+
+
+class Counter(object):
+    def __init__(self, initval=0):
+        self.val = Value('i', initval)
+        self.lock = Lock()
+
+    def increment(self):
+        with self.lock:
+            self.val.value += 1
+
+    def value(self):
+        with self.lock:
+            return self.val.value
 
 
 def progress(count, total, status=''):
@@ -44,47 +58,33 @@ def squarify(img, size, fill=False, fill_color=(255, 0, 255)):
     return img
 
 
-class Counter(object):
-    def __init__(self, initval=0):
-        self.val = Value('i', initval)
-        self.lock = Lock()
-
-    def increment(self):
-        with self.lock:
-            self.val.value += 1
-
-    def value(self):
-        with self.lock:
-            return self.val.value
-
-
 def normalize_images(indir, outdir, normal_size, mode='crop'):  # TODO mode (crop/fill)
+    """Load and rescale Images by using multiple multiple threads
+
+    Args:
+        indir (:obj:`str`): Input directory
+        outdir (:obj:`str`): Output directory
+        normal_size (int): target width and height of new images
+    """
+
     piclist = get_imglist(indir)
     ensure_dir(outdir)
-    start_time = time.time()
 
     pool = ThreadPool(4)
     counter = Counter(0)
 
-    pool.starmap(
+    normalize_image_partial = partial(
         normalize_image,
-        zip(
-            piclist,
-            itertools.repeat(counter),
-            itertools.repeat(len(piclist)),
-            itertools.repeat(outdir),
-            itertools.repeat(normal_size),
-        )
+        counter=counter, max_value=len(piclist), out=outdir, normal_size=normal_size,
     )
+
+    pool.map(normalize_image_partial, piclist)
     pool.close()
     pool.join()
 
-    print()
-    print(f'Time needed: {time.time() - start_time}s')
 
-
-def normalize_image(path, counter, count, outdir, normal_size):
-    outfile = os.path.join(outdir, f'pic{counter.value()}.jpg')
+def normalize_image(path, counter, max_value, out, normal_size):
+    outfile = os.path.join(out, f'pic{counter.value()}.jpg')
     if not os.path.exists(outfile):
         try:
             img = Image.open(path)
@@ -95,7 +95,31 @@ def normalize_image(path, counter, count, outdir, normal_size):
         except OSError:
             print(f'Skipping broken image: {path}...   ')
     counter.increment()
-    progress(counter.value(), count, 'copying and resizing images..')
+    progress(counter.value(), max_value, 'copying and resizing images..')
+
+
+def calculate_average_colors(piclist, average_color_f):
+    start_time = time.time()
+
+    pool = ThreadPool(4)
+    counter = Counter(0)
+
+    calculate_average_color_partial = partial(
+        calculate_average_color, counter=counter, max_value=len(piclist),
+    )
+
+    avg_colors = pool.map(calculate_average_color_partial, piclist)
+
+    save_average_colors(average_color_f, avg_colors)
+    print("--- %s seconds ---" % (time.time() - start_time))
+
+
+def calculate_average_color(path, *, counter, max_value):
+    avg_color = get_image_average(Image.open(path))
+    counter.increment()
+    progress(counter.value(), max_value, 'calc average colors...')
+
+    return avg_color
 
 
 def ensure_dir(path):
@@ -169,12 +193,8 @@ def mosaic(original_image_path, stitched_out_path, source_path, images_per_line)
         print('reading stored average colors..')
         piccolors = read_average_colors(average_color_f)
     else:
-        piccolors = []
-        for x in range(len(piclist)):
-            progress(x + 1, len(piclist), 'calc average colors...')
-            piccolors.append(get_image_average(Image.open(piclist[x])))
-        print()
-        save_average_colors(average_color_f, piccolors)
+        calculate_average_colors(piclist, average_color_f)
+        piccolors = read_average_colors(average_color_f)
 
     ## strink target image to squared image of size (images_per_line, images_per_line)
     ## then put the colors into a list
@@ -245,7 +265,7 @@ def main():
     if not os.path.exists(source_path):
         normalize_images(args.src_dir, source_path, args.width)
 
-    # mosaic(args.src_pic, args.out_pic, source_path, args.number)
+    mosaic(args.src_pic, args.out_pic, source_path, args.number)
 
 
 if __name__ == '__main__':
