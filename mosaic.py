@@ -5,6 +5,7 @@ import os
 import random
 import sys
 import time
+from multiprocessing import Value, Lock
 from multiprocessing.pool import ThreadPool
 
 import numpy as np
@@ -43,17 +44,33 @@ def squarify(img, size, fill=False, fill_color=(255, 0, 255)):
     return img
 
 
+class Counter(object):
+    def __init__(self, initval=0):
+        self.val = Value('i', initval)
+        self.lock = Lock()
+
+    def increment(self):
+        with self.lock:
+            self.val.value += 1
+
+    def value(self):
+        with self.lock:
+            return self.val.value
+
+
 def normalize_images(indir, outdir, normal_size, mode='crop'):  # TODO mode (crop/fill)
     piclist = get_imglist(indir)
     ensure_dir(outdir)
     start_time = time.time()
 
     pool = ThreadPool(4)
+    counter = Counter(0)
+
     pool.starmap(
         normalize_image,
         zip(
             piclist,
-            list(range(len(piclist))),
+            itertools.repeat(counter),
             itertools.repeat(len(piclist)),
             itertools.repeat(outdir),
             itertools.repeat(normal_size),
@@ -66,10 +83,8 @@ def normalize_images(indir, outdir, normal_size, mode='crop'):  # TODO mode (cro
     print(f'Time needed: {time.time() - start_time}s')
 
 
-def normalize_image(path, i, count, outdir, normal_size):
-    progress(i, count, 'copying and resizing images..')
-
-    outfile = os.path.join(outdir, f'pic{i}.jpg')
+def normalize_image(path, counter, count, outdir, normal_size):
+    outfile = os.path.join(outdir, f'pic{counter.value()}.jpg')
     if not os.path.exists(outfile):
         try:
             img = Image.open(path)
@@ -79,6 +94,8 @@ def normalize_image(path, i, count, outdir, normal_size):
             img.save(outfile)
         except OSError:
             print(f'Skipping broken image: {path}...   ')
+    counter.increment()
+    progress(counter.value(), count, 'copying and resizing images..')
 
 
 def ensure_dir(path):
