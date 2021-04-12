@@ -93,7 +93,9 @@ def normalize_image(path, counter, max_value, out, normal_size):
 			img = squarify(img, normal_size)  # this takes about 10 times longer than img.save
 			img.save(outfile)
 		except OSError:
-			print(f'Skipping broken image: {path}...   ')
+			print(f'Skipping OSError image: {path}...                ')
+		except UnboundLocalError:
+			print(f'Skipping UnboundLocalError image: {path}...      ')
 	counter.increment()
 	progress(counter.value(), max_value, 'copying and resizing images..')
 
@@ -243,14 +245,14 @@ def main():
 	parser.add_argument('-n', '--number', type=int, default=32,
 						help="number of images per row of the mosaic (default: 32)")
 	parser.add_argument('-o', '--out_pic', type=str,
-						help="the path of the generated mosaic (default: '[src_pic]_{n}x{w}.jpg')")
+						help="the path of the generated mosaic (default: '[src_pic]_{n}x{w}.png')")
 	args = parser.parse_args()
 
 	source_path = f'{args.src_dir}_normal_{args.width}'
 	if not args.out_pic:
-		args.out_pic = f'{os.path.splitext(args.src_pic)[0]}_{args.number}x{args.width}.jpg'
-	if os.path.splitext(args.out_pic) not in ['.jpg', '.png', '.jpeg']:
-		args.out_pic += '.jpg'
+		args.out_pic = f'{os.path.splitext(args.src_pic)[0]}_{args.number}x{args.width}.png'
+	if os.path.splitext(args.out_pic)[1].lower() not in ['.jpg', '.png', '.jpeg']:
+		args.out_pic += '.png'
 
 	if len(get_imglist(args.src_dir)) < args.number ** 2:
 		print(f'There are not enough images in {args.src_dir}')
