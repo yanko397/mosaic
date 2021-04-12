@@ -10,7 +10,7 @@ from multiprocessing.pool import ThreadPool
 
 import numpy as np
 from PIL import Image
-from skimage import io
+from skimage import io, transform
 
 current_time_milli = lambda: int(round(time.time() * 1000))
 current_time_micro = lambda: int(round(time.time() * 1000000))
@@ -39,7 +39,33 @@ def progress(count, total, status=''):
 	sys.stdout.flush()
 
 
-def squarify(img, size, fill=False, fill_color=(255, 0, 255)):
+def squarify_skimage(path, size, outfile='nosave'):
+	img = io.imread(path)
+
+	if img.shape[0] < img.shape[1]:
+		img = transform.resize(img, (size, int(size * max(img.shape[:-1]) / min(img.shape[:-1]))), anti_aliasing=False)
+		a = 0
+		b = int((max(img.shape[:-1])-size)/2)
+		c = size
+		d = int((max(img.shape[:-1])-size)/2+size)
+		img = img[a:c, b:d]
+	elif img.shape[0] > img.shape[1]:
+		img = transform.resize(img, (int(size * max(img.shape[:-1]) / min(img.shape[:-1])), size), anti_aliasing=False)
+		img = img[int((max(img.shape[:-1])-size)/2):int((max(img.shape[:-1])-size)/2+size), 0:size]
+	else:
+		img = transform.resize(img, (size, size))
+
+	if outfile == 'nosave':
+		return img
+	else:
+		io.imsave(outfile, img)
+
+
+def squarify(path, size, outfile='nosave', fill=False, fill_color=(255, 0, 255)):
+	img = Image.open(path)
+	if img.mode != 'RGB':
+		img = img.convert('RGB')
+
 	if fill:
 		new_img = Image.new('RGB', (size, size), fill_color)
 		img.thumbnail((size, size))
@@ -48,13 +74,16 @@ def squarify(img, size, fill=False, fill_color=(255, 0, 255)):
 		img = new_img
 	else:
 		if img.size[0] < img.size[1]:
-			img = img.resize((size, int(size * max(img.size) / min(img.size)))) # this takes about 12 times longer than img.crop
+			img = img.resize((size, int(size * max(img.size) / min(img.size))), Image.NEAREST) # this takes about 12 times longer than img.crop
 			img = img.crop((0, (max(img.size) - size) / 2, size, (max(img.size) - size) / 2 + size))
 		elif img.size[0] > img.size[1]:
-			img = img.resize((int(size * max(img.size) / min(img.size)), size))
+			img = img.resize((int(size * max(img.size) / min(img.size)), size), Image.NEAREST)
 			img = img.crop(((max(img.size) - size) / 2, 0, (max(img.size) - size) / 2 + size, size))
 		else:
 			img = img.resize((size, size))
+
+	if outfile != 'nosave':
+		img.save(outfile)
 	return img
 
 
@@ -87,11 +116,7 @@ def normalize_image(path, counter, max_value, out, normal_size):
 	outfile = os.path.join(out, f'pic{counter.value()}.jpg')
 	if not os.path.exists(outfile):
 		try:
-			img = Image.open(path)
-			if img.mode != 'RGB':
-				img = img.convert('RGB')
-			img = squarify(img, normal_size)  # this takes about 10 times longer than img.save
-			img.save(outfile)
+			squarify(path, normal_size, outfile)
 		except OSError:
 			print(f'Skipping OSError image: {path}...                ')
 		except UnboundLocalError:
@@ -195,7 +220,7 @@ def mosaic(original_image_path, stitched_out_path, source_path, images_per_line)
 	original_image = Image.open(original_image_path)
 	if original_image.mode != 'RGB':
 		original_image = original_image.convert('RGB')
-	targetcolors = list(squarify(original_image, size=images_per_line, fill=True).getdata())
+	targetcolors = list(squarify_old(original_image, size=images_per_line, fill=True).getdata())
 
 	randomized_indexes = [x for x in range(len(targetcolors))]
 	## fill result array with stuff so elements can be placed at randomized indexes
