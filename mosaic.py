@@ -39,7 +39,7 @@ def progress(count, total, status=''):
 	sys.stdout.flush()
 
 
-def squarify_skimage(path, size, outfile='nosave'):
+def squarify_skimage(path, size, outfile='-1'):
 	img = io.imread(path)
 
 	if img.shape[0] < img.shape[1]:
@@ -55,13 +55,13 @@ def squarify_skimage(path, size, outfile='nosave'):
 	else:
 		img = transform.resize(img, (size, size))
 
-	if outfile == 'nosave':
+	if outfile == '-1':
 		return img
 	else:
 		io.imsave(outfile, img)
 
 
-def squarify(path, size, outfile='nosave', fill=False, fill_color=(255, 0, 255)):
+def squarify(path, size, outfile='-1', fill=False, fill_color=(255, 0, 255)):
 	img = Image.open(path)
 	if img.mode != 'RGB':
 		img = img.convert('RGB')
@@ -74,7 +74,7 @@ def squarify(path, size, outfile='nosave', fill=False, fill_color=(255, 0, 255))
 		img = new_img
 	else:
 		if img.size[0] < img.size[1]:
-			img = img.resize((size, int(size * max(img.size) / min(img.size))), Image.NEAREST) # this takes about 12 times longer than img.crop
+			img = img.resize((size, int(size * max(img.size) / min(img.size)))) # this takes about 12 times longer than img.crop
 			img = img.crop((0, (max(img.size) - size) / 2, size, (max(img.size) - size) / 2 + size))
 		elif img.size[0] > img.size[1]:
 			img = img.resize((int(size * max(img.size) / min(img.size)), size), Image.NEAREST)
@@ -82,13 +82,13 @@ def squarify(path, size, outfile='nosave', fill=False, fill_color=(255, 0, 255))
 		else:
 			img = img.resize((size, size))
 
-	if outfile != 'nosave':
+	if outfile != '-1':
 		img.save(outfile)
 	return img
 
 
 def normalize_images(indir, outdir, normal_size, mode='crop'):  # TODO mode (crop/fill)
-	"""Load and rescale Images by using multiple multiple threads
+	"""Load and rescale Images by using multiple threads
 
 	Args:
 		indir (:obj:`str`): Input directory
@@ -210,17 +210,14 @@ def mosaic(original_image_path, stitched_out_path, source_path, images_per_line)
 	average_color_f = os.path.join(source_path, 'colors.txt')
 	if os.path.exists(average_color_f) and file_len(average_color_f) == len(piclist):
 		print('reading stored average colors..')
-		piccolors = read_average_colors(average_color_f)
 	else:
 		calculate_average_colors(piclist, average_color_f)
-		piccolors = read_average_colors(average_color_f)
+		print()
+	piccolors = read_average_colors(average_color_f)
 
 	## strink target image to squared image of size (images_per_line, images_per_line)
 	## then put the colors into a list
-	original_image = Image.open(original_image_path)
-	if original_image.mode != 'RGB':
-		original_image = original_image.convert('RGB')
-	targetcolors = list(squarify_old(original_image, size=images_per_line, fill=True).getdata())
+	targetcolors = list(squarify(original_image_path, size=images_per_line, fill=True).getdata())
 
 	randomized_indexes = [x for x in range(len(targetcolors))]
 	## fill result array with stuff so elements can be placed at randomized indexes
@@ -228,7 +225,7 @@ def mosaic(original_image_path, stitched_out_path, source_path, images_per_line)
 	random.shuffle(randomized_indexes)
 	i = 1
 	for x in randomized_indexes:
-		progress(i, len(targetcolors), 'find matching imgs...')
+		progress(i, len(targetcolors), 'find matching images...')
 		if targetcolors[x] != (255, 0, 255):
 			good_image_index = get_index_closest_color(targetcolors[x], piccolors)
 			## using pop so images won't appear multiple times
@@ -260,7 +257,10 @@ def mosaic(original_image_path, stitched_out_path, source_path, images_per_line)
 
 
 def main():
-	parser = argparse.ArgumentParser(description='Mosaic Image Generator v1.1')
+	version = 'v1.1'
+	description = f'Mosaic Image Generator {version}'
+	print(f'Welcome to {description}')
+	parser = argparse.ArgumentParser(description=description)
 	parser.add_argument('src_dir', type=str,
 						help="directory with a lot of images")
 	parser.add_argument('src_pic', type=str,
@@ -270,21 +270,23 @@ def main():
 	parser.add_argument('-n', '--number', type=int, default=32,
 						help="number of images per row of the mosaic (default: 32)")
 	parser.add_argument('-o', '--out_pic', type=str,
-						help="the path of the generated mosaic (default: '[src_pic]_{n}x{w}.png')")
+						help="the path of the generated mosaic (default: '[src_pic]_[src_dir]_{n}x{w}.png')")
 	args = parser.parse_args()
 
 	source_path = f'{args.src_dir}_normal_{args.width}'
 	if not args.out_pic:
-		args.out_pic = f'{os.path.splitext(args.src_pic)[0]}_{args.number}x{args.width}.png'
+		args.out_pic = f'{os.path.splitext(args.src_pic)[0]}_{args.src_dir.split(os.path.sep)[-1]}_{args.number}x{args.width}.png'
 	if os.path.splitext(args.out_pic)[1].lower() not in ['.jpg', '.png', '.jpeg']:
 		args.out_pic += '.png'
 
+	print('scanning image directory...')
 	if len(get_imglist(args.src_dir)) < args.number ** 2:
 		print(f'There are not enough images in {args.src_dir}')
 		print(f'for a {args.number} by {args.number} mosaic.')
 		exit()
 	if not os.path.exists(source_path):
 		normalize_images(args.src_dir, source_path, args.width)
+		print()
 
 	mosaic(args.src_pic, args.out_pic, source_path, args.number)
 
