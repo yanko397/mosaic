@@ -137,6 +137,7 @@ def calculate_average_colors(piclist, average_color_f):
 	pool.close()
 	pool.join()
 	save_average_colors(average_color_f, avg_colors)
+	return avg_colors
 
 
 def calculate_average_color(path, *, counter, max_value):
@@ -146,7 +147,7 @@ def calculate_average_color(path, *, counter, max_value):
 	counter.increment()
 	progress(counter.value(), max_value, 'calc average colors...')
 
-	return tuple(avg_color)
+	return (path, tuple(avg_color))
 
 
 def ensure_dir(path):
@@ -162,9 +163,9 @@ def get_imglist(path):
 	return infiles
 
 
-def get_index_closest_color(color, colors):
+def get_index_closest_color(color, colors): # TODO improve that (sort list beforehand, than pivot search if possible)
 	color = np.array(color)
-	colors = np.array(colors)
+	colors = np.array([x[1] for x in colors])
 	distances = np.sqrt(np.sum((colors - color) ** 2, axis=1))
 	index_of_smallest = np.where(distances == np.amin(distances))
 	return int(index_of_smallest[0][0])
@@ -186,14 +187,15 @@ def get_concat_y(im1, im2):
 
 def save_average_colors(path, colors):
 	file = open(path, 'w')
-	for color in colors:
-		file.write(f'{str(color)}\n')
+	for path, color in colors:
+		file.write(f'{path}\t{str(color)}\n')
 
 
 def read_average_colors(path):
 	colors = []
-	for color in open(path):
-		colors.append(ast.literal_eval(color))
+	for line in open(path):
+		path, color = line.strip().split('\t')
+		colors.append((path, ast.literal_eval(color)))
 	return colors
 
 
@@ -210,10 +212,10 @@ def mosaic(original_image_path, stitched_out_path, source_path, images_per_line)
 	average_color_f = os.path.join(source_path, 'colors.txt')
 	if os.path.exists(average_color_f) and file_len(average_color_f) == len(piclist):
 		print('reading stored average colors..')
+		piccolors = read_average_colors(average_color_f)
 	else:
-		calculate_average_colors(piclist, average_color_f)
+		piccolors = calculate_average_colors(piclist, average_color_f)
 		print()
-	piccolors = read_average_colors(average_color_f)
 
 	## strink target image to squared image of size (images_per_line, images_per_line)
 	## then put the colors into a list
