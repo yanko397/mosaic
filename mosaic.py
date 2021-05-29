@@ -4,6 +4,7 @@ import os
 import random
 import sys
 import time
+import warnings
 from functools import partial
 from multiprocessing import Value, Lock
 from multiprocessing.pool import ThreadPool
@@ -103,7 +104,7 @@ def normalize_images(indir, outdir, normal_size, mode='crop'):  # TODO mode (cro
 	already_normalized = set([x for x in os.listdir(outdir)])
 	if len(piclist) - len(already_normalized) == 0:
 		return
-	print(f'Skipping {len(already_normalized)} already normalized images ({int(len(already_normalized)/len(piclist)*100)}%)..')
+	print(f'Skipping {len(already_normalized)} of {len(piclist)} already normalized images ({round(len(already_normalized)/len(piclist)*100)}%)..')
 	piclist = [x for x in piclist if os.path.basename(x) not in already_normalized]
 
 	pool = ThreadPool(4)
@@ -299,4 +300,5 @@ def main():
 
 
 if __name__ == '__main__':
+	warnings.simplefilter("ignore", UserWarning)
 	main()
