@@ -99,6 +99,13 @@ def normalize_images(indir, outdir, normal_size, mode='crop'):  # TODO mode (cro
 	piclist = get_imglist(indir)
 	ensure_dir(outdir)
 
+	# skip already downloaded
+	already_normalized = set([x for x in os.listdir(outdir)])
+	if len(piclist) - len(already_normalized) == 0:
+		return
+	print(f'Skipping {len(already_normalized)} already normalized images ({int(len(already_normalized)/len(piclist)*100)}%)..')
+	piclist = [x for x in piclist if os.path.basename(x) not in already_normalized]
+
 	pool = ThreadPool(4)
 	counter = Counter(0)
 
@@ -113,14 +120,13 @@ def normalize_images(indir, outdir, normal_size, mode='crop'):  # TODO mode (cro
 
 
 def normalize_image(path, counter, max_value, out, normal_size):
-	outfile = os.path.join(out, f'pic{counter.value()}.jpg')
-	if not os.path.exists(outfile):
-		try:
-			squarify(path, normal_size, outfile)
-		except OSError:
-			print(f'Skipping OSError image: {path}...                ')
-		except UnboundLocalError:
-			print(f'Skipping UnboundLocalError image: {path}...      ')
+	outfile = os.path.join(out, os.path.basename(path))
+	try:
+		squarify(path, normal_size, outfile)
+	except OSError:
+		print(f'Skipping OSError image: {path}...                ')
+	except UnboundLocalError:
+		print(f'Skipping UnboundLocalError image: {path}...      ')
 	counter.increment()
 	progress(counter.value(), max_value, 'copying and resizing images..')
 
@@ -158,7 +164,7 @@ def ensure_dir(path):
 def get_imglist(path):
 	infiles = []
 	for x in os.listdir(path):
-		if os.path.splitext(x)[1] in ['.png', '.jpg', '.jpeg']:
+		if os.path.splitext(x)[1].lower() in ['.png', '.jpg', '.jpeg']:
 			infiles.append(os.path.join(path, x))
 	return infiles
 
@@ -286,9 +292,8 @@ def main():
 		print(f'There are not enough images in {args.src_dir}')
 		print(f'for a {args.number} by {args.number} mosaic.')
 		exit()
-	if not os.path.exists(source_path):
-		normalize_images(args.src_dir, source_path, args.width)
-		print()
+	normalize_images(args.src_dir, source_path, args.width)
+	print()
 
 	mosaic(args.src_pic, args.out_pic, source_path, args.number)
 
