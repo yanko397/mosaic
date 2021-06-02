@@ -97,52 +97,53 @@ def normalize_images(indir, outdir, normal_size, mode='crop'):  # TODO mode (cro
 		normal_size (int): target width and height of new images
 	"""
 
-	piclist = get_imglist(indir)
 	ensure_dir(outdir)
+	original_images = set(get_imglist(indir, just_basenames=True))
+	already_normalized = set(get_imglist(outdir, just_basenames=True))
+	to_normalize = original_images - already_normalized
 
-	# skip already downloaded
-	already_normalized = set([x for x in get_imglist(outdir)])
-	if len(piclist) - len(already_normalized) == 0:
+	if len(to_normalize) == 0:
 		return
-	if len(already_normalized) != 0 and len(already_normalized) != len(piclist):
-		print(f'Skipping {len(already_normalized)} of {len(piclist)} already normalized images ({round(len(already_normalized)/len(piclist)*100)}%)..')
-	piclist = [x for x in piclist if os.path.basename(x) not in already_normalized]
+
+	if len(already_normalized) != 0 and len(already_normalized) != len(original_images):
+		print(f'Skipping {len(already_normalized)} of {len(original_images)} already normalized images ({round(len(already_normalized)/len(original_images)*100)}%)..')
 
 	pool = ThreadPool(4)
 	counter = Counter(0)
 
 	normalize_image_partial = partial(
 		normalize_image,
-		counter=counter, max_value=len(piclist), out=outdir, normal_size=normal_size,
+		indir=indir, counter=counter, max_value=len(to_normalize), outdir=outdir, normal_size=normal_size,
 	)
 
-	pool.map(normalize_image_partial, piclist)
+	pool.map(normalize_image_partial, to_normalize)
 	pool.close()
 	pool.join()
 	print()
 
 
-def normalize_image(path, counter, max_value, out, normal_size):
+def normalize_image(img_name, indir, counter, max_value, outdir, normal_size):
 	move_broken_files = False
-	outfile = os.path.join(out, os.path.basename(path))
+	infile = os.path.join(indir, img_name)
+	outfile = os.path.join(outdir, img_name)
 	try:
-		squarify(path, normal_size, outfile)
+		squarify(infile, normal_size, outfile)
 	except OSError:
 		if move_broken_files:
-			print(f'Moving OSError image to "sorted_out": {path}...  ')
+			print(f'Moving OSError image to "sorted_out": {infile}...  ')
 			try:
-				sorted_out_dir = os.path.join(out, '..', 'sorted_out')
+				sorted_out_dir = os.path.join(outdir, '..', 'sorted_out')
 				ensure_dir(sorted_out_dir)
-				os.rename(path, os.path.join(sorted_out_dir, os.path.basename(path)))
+				os.rename(infile, os.path.join(sorted_out_dir, os.path.basename(infile)))
 			except Exception as e:
 				print("Wasn't able to move.")
 				print(e)
 		else:
-			print(f'Skipping OSError image: {path}...                ')
+			print(f'Skipping OSError image: {infile}...                ')
 	except UnboundLocalError:
-		print(f'Skipping UnboundLocalError image: {path}...      ')
+		print(f'Skipping UnboundLocalError image: {infile}...      ')
 	except Image.DecompressionBombWarning:
-		print(f'DecompressionBombWarning image: {path}...        ')
+		print(f'DecompressionBombWarning image: {infile}...        ')
 	counter.increment()
 	progress(counter.value(), max_value, 'copying and resizing images..')
 
@@ -156,6 +157,7 @@ def calculate_average_colors(piclist, average_color_f):
 	)
 
 	avg_colors = pool.map(calculate_average_color_partial, piclist)
+	avg_colors = [x for x in avg_colors if x != None]
 	pool.close()
 	pool.join()
 	save_average_colors(average_color_f, avg_colors)
@@ -163,11 +165,15 @@ def calculate_average_colors(piclist, average_color_f):
 
 
 def calculate_average_color(path, *, counter, max_value):
-	img = io.imread(path)
-	avg_color = tuple(np.rint(img.mean(axis=(0, 1))).astype(int))
-
 	counter.increment()
 	progress(counter.value(), max_value, 'calc average colors...')
+
+	try:
+		img = io.imread(path)
+	except ValueError:
+		os.remove(path)
+		return None
+	avg_color = tuple(np.rint(img.mean(axis=(0, 1))).astype(int))
 
 	return (path, tuple(avg_color))
 
@@ -177,12 +183,15 @@ def ensure_dir(path):
 		os.makedirs(path)
 
 
-def get_imglist(path):
-	infiles = []
+def get_imglist(path, just_basenames=False):
+	files = []
 	for x in os.listdir(path):
 		if os.path.splitext(x)[1].lower() in ['.png', '.jpg', '.jpeg']:
-			infiles.append(os.path.join(path, x))
-	return infiles
+			if just_basenames:
+				files.append(x)
+			else:
+				files.append(os.path.join(path, x))
+	return files
 
 
 def get_index_closest_color(color, colors): # TODO improve that (sort list beforehand, than pivot search if possible)
