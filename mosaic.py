@@ -101,10 +101,11 @@ def normalize_images(indir, outdir, normal_size, mode='crop'):  # TODO mode (cro
 	ensure_dir(outdir)
 
 	# skip already downloaded
-	already_normalized = set([x for x in os.listdir(outdir)])
+	already_normalized = set([x for x in get_imglist(outdir)])
 	if len(piclist) - len(already_normalized) == 0:
 		return
-	print(f'Skipping {len(already_normalized)} of {len(piclist)} already normalized images ({round(len(already_normalized)/len(piclist)*100)}%)..')
+	if len(already_normalized) != 0 and len(already_normalized) != len(piclist):
+		print(f'Skipping {len(already_normalized)} of {len(piclist)} already normalized images ({round(len(already_normalized)/len(piclist)*100)}%)..')
 	piclist = [x for x in piclist if os.path.basename(x) not in already_normalized]
 
 	pool = ThreadPool(4)
@@ -118,6 +119,7 @@ def normalize_images(indir, outdir, normal_size, mode='crop'):  # TODO mode (cro
 	pool.map(normalize_image_partial, piclist)
 	pool.close()
 	pool.join()
+	print()
 
 
 def normalize_image(path, counter, max_value, out, normal_size):
@@ -307,7 +309,6 @@ def main():
 		print(f'for a {args.number} by {args.number} mosaic.')
 		exit()
 	normalize_images(args.src_dir, source_path, args.width)
-	print()
 
 	mosaic(args.src_pic, args.out_pic, source_path, args.number)
 
