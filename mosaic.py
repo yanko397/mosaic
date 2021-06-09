@@ -5,6 +5,7 @@ import random
 import sys
 import time
 import warnings
+from datetime import datetime
 from functools import partial
 from multiprocessing import Value, Lock
 from multiprocessing.pool import ThreadPool
@@ -36,8 +37,16 @@ def progress(count, total, status=''):
 	filled_len = int(round(bar_len * count / float(total)))
 	percents = round(100.0 * count / float(total), 1)
 	bar = '#' * filled_len + '-' * (bar_len - filled_len)
-	sys.stdout.write('[%s] %s%s %s\r' % (bar, percents, '%', status))
+	now = datetime.now().strftime("%H:%M:%S")
+	sys.stdout.write('[%s] [%s] %s%s %s\r' % (now, bar, percents, '%', status))
 	sys.stdout.flush()
+
+
+def log(text, timestamp=True):
+	if timestamp:
+		print(f'[{datetime.now().strftime("%H:%M:%S")}] {str(text)}')
+	else:
+		print(f'           {str(text)}')
 
 
 def squarify_skimage(path, size, outfile='-1'):
@@ -98,15 +107,20 @@ def normalize_images(indir, outdir, normal_size, mode='crop'):  # TODO mode (cro
 	"""
 
 	ensure_dir(outdir)
+	log(f'reading {indir}...')
 	original_images = set(get_imglist(indir, just_basenames=True))
+	log(f'reading {outdir}...')
 	already_normalized = set(get_imglist(outdir, just_basenames=True))
+	log(f'checking what to normalize...')
 	to_normalize = original_images - already_normalized
 
 	if len(to_normalize) == 0:
 		return
 
 	if len(already_normalized) != 0 and len(already_normalized) != len(original_images):
-		print(f'Skipping {len(already_normalized)} of {len(original_images)} already normalized images ({round(len(already_normalized)/len(original_images)*100)}%)..')
+		log(f'skipping {len(already_normalized)} of {len(original_images)} already normalized images ({round(len(already_normalized)/len(original_images)*100)}%)...')
+
+	log("starting normalization...")
 
 	pool = ThreadPool(4)
 	counter = Counter(0)
@@ -130,22 +144,22 @@ def normalize_image(img_name, indir, counter, max_value, outdir, normal_size):
 		squarify(infile, normal_size, outfile)
 	except OSError:
 		if move_broken_files:
-			print(f'Moving OSError image to "sorted_out": {infile}...  ')
+			log(f'moving OSError image to "sorted_out": {infile}...  ')
 			try:
 				sorted_out_dir = os.path.join(outdir, '..', 'sorted_out')
 				ensure_dir(sorted_out_dir)
 				os.rename(infile, os.path.join(sorted_out_dir, os.path.basename(infile)))
 			except Exception as e:
-				print("Wasn't able to move.")
-				print(e)
+				log("wasn't able to move.")
+				log(e)
 		else:
-			print(f'Skipping OSError image: {infile}...                ')
+			log(f'skipping OSError image: {infile}...                ')
 	except UnboundLocalError:
-		print(f'Skipping UnboundLocalError image: {infile}...      ')
+		log(f'skipping UnboundLocalError image: {infile}...      ')
 	except Image.DecompressionBombWarning:
-		print(f'DecompressionBombWarning image: {infile}...        ')
+		log(f'got DecompressionBombWarning image: {infile}...        ')
 	counter.increment()
-	progress(counter.value(), max_value, 'copying and resizing images..')
+	progress(counter.value(), max_value, 'copying and resizing images...')
 
 
 def calculate_average_colors(piclist, average_color_f):
@@ -242,9 +256,10 @@ def mosaic(original_image_path, stitched_out_path, source_path, images_per_line)
 
 	average_color_f = os.path.join(source_path, 'colors.txt')
 	if os.path.exists(average_color_f) and file_len(average_color_f) == len(piclist):
-		print('reading stored average colors..')
+		log('reading stored average colors...')
 		piccolors = read_average_colors(average_color_f)
 	else:
+		log('starting calculation of average colors...')
 		piccolors = calculate_average_colors(piclist, average_color_f)
 		print()
 
@@ -252,6 +267,7 @@ def mosaic(original_image_path, stitched_out_path, source_path, images_per_line)
 	## then put the colors into a list
 	targetcolors = list(squarify(original_image_path, size=images_per_line, fill=True).getdata())
 
+	log('starting search for maching images...')
 	randomized_indexes = [x for x in range(len(targetcolors))]
 	## fill result array with stuff so elements can be placed at randomized indexes
 	matches = [x for x in randomized_indexes]
@@ -269,6 +285,7 @@ def mosaic(original_image_path, stitched_out_path, source_path, images_per_line)
 		i += 1
 	print()
 
+	log('starting stitching of final mosaic image...')
 	stitched = None
 	for y in range(images_per_line):
 		row = None
@@ -284,7 +301,7 @@ def mosaic(original_image_path, stitched_out_path, source_path, images_per_line)
 			stitched = row if not stitched else get_concat_y(stitched, row)
 	print()
 
-	print('saving stitched image...')
+	log('saving stitched image...')
 	stitched.save(stitched_out_path)
 	return stitched
 
@@ -292,7 +309,7 @@ def mosaic(original_image_path, stitched_out_path, source_path, images_per_line)
 def main():
 	version = 'v1.1'
 	description = f'Mosaic Image Generator {version}'
-	print(f'Welcome to {description}')
+	log(f'Welcome to {description}')
 	parser = argparse.ArgumentParser(description=description)
 	parser.add_argument('src_dir', type=str,
 						help="directory with a lot of images")
@@ -312,14 +329,17 @@ def main():
 	if os.path.splitext(args.out_pic)[1].lower() not in ['.jpg', '.png', '.jpeg']:
 		args.out_pic += '.png'
 
-	print('scanning image directory...')
+	log('scanning image directory...')
 	if len(get_imglist(args.src_dir)) < args.number ** 2:
-		print(f'There are not enough images in {args.src_dir}')
-		print(f'for a {args.number} by {args.number} mosaic.')
+		log(f'there are not enough images in {args.src_dir}')
+		log(f'for a {args.number} by {args.number} mosaic', timestamp=False)
 		exit()
+
 	normalize_images(args.src_dir, source_path, args.width)
 
 	mosaic(args.src_pic, args.out_pic, source_path, args.number)
+
+	log('done')
 
 
 if __name__ == '__main__':
