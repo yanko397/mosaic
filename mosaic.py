@@ -137,12 +137,12 @@ def normalize_images(indir, outdir, normal_size, mode='crop'):  # TODO mode (cro
 
 
 def normalize_image(img_name, indir, counter, max_value, outdir, normal_size):
-	move_broken_files = False
+	move_broken_files = True
 	infile = os.path.join(indir, img_name)
 	outfile = os.path.join(outdir, img_name)
 	try:
 		squarify(infile, normal_size, outfile)
-	except OSError:
+	except (OSError, SyntaxError, ValueError):
 		if move_broken_files:
 			log(f'moving OSError image to "sorted_out": {infile}...  ')
 			try:
@@ -153,11 +153,9 @@ def normalize_image(img_name, indir, counter, max_value, outdir, normal_size):
 				log("wasn't able to move.")
 				log(e)
 		else:
-			log(f'skipping OSError image: {infile}...                ')
+			log(f'skipping broken image: {infile}...                ')
 	except UnboundLocalError:
 		log(f'skipping UnboundLocalError image: {infile}...      ')
-	except Image.DecompressionBombWarning:
-		log(f'got DecompressionBombWarning image: {infile}...        ')
 	counter.increment()
 	progress(counter.value(), max_value, 'copying and resizing images...')
 
@@ -344,5 +342,5 @@ def main():
 
 if __name__ == '__main__':
 	warnings.simplefilter("ignore", UserWarning)
-	warnings.simplefilter("error", Image.DecompressionBombWarning)
+	warnings.simplefilter("ignore", Image.DecompressionBombWarning)
 	main()
