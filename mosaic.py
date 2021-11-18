@@ -321,6 +321,8 @@ def main():
 						help="the path of the generated mosaic (default: '[src_pic]_[src_dir]_{n}x{w}.png')")
 	args = parser.parse_args()
 
+
+	args.src_dir = args.src_dir[:-1] if args.src_dir.endswith('/') or args.src_dir.endswith('\\') else args.src_dir
 	source_path = f'{args.src_dir}_normal_{args.width}'
 	if not args.out_pic:
 		args.out_pic = f'{os.path.splitext(args.src_pic)[0]}_{args.src_dir.split(os.path.sep)[-1]}_{args.number}x{args.width}.png'
