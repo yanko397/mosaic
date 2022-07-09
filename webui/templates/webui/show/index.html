@@ -1,0 +1,9 @@
+{% if latest_mosaics %}
+	<ul>
+	{% for mosaic in latest_mosaics %}
+		<li><a href="/webui{{ mosaic.image_path }}/">{{ mosaic.image_path }}</a></li>
+	{% endfor %}
+	</ul>
+{% else %}
+	<p>No Mosaics are available.</p>
+{% endif %}
