@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.http import HttpResponse
 
 from .models import Mosaic
@@ -21,5 +21,12 @@ def show_imgs(request):
 	context = {
 		'latest_mosaics': latest_mosaics,
 	}
-	return render(request, 'webui/show/index.html', context)
+	return render(request, 'webui/show_imgs.html', context)
+
+def show_img(request, img_id):
+	img = get_object_or_404(Mosaic, pk=img_id);
+	context = {
+		'img': img.image_path,
+	}
+	return render(request, 'webui/show_img.html', context)
 
